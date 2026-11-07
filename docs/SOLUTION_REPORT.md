@@ -6,7 +6,7 @@
 | **Problem Title** | `Intelligent & Computationally Efficient Smartphone ISP (Hybrid RAW → sRGB pipeline)` |
 | **Team Name** | `[Enter Registered Team Name]` |
 | **Team Members** | `[Full Name – USN]`, `[Full Name – USN]`, `[Full Name – USN]`, `[Full Name – USN]` |
-| **GitHub Repository** | `[https://github.com/<user>/hybrid-isp]` — evaluated commit `[git rev-parse --short HEAD]` |
+| **GitHub Repository** | `https://github.com/spandana13-code/hybrid-isp` — evaluated commit `eaae99c` |
 | **Live Demo / Deployment** | `[https://huggingface.co/spaces/<user>/hybrid-isp]` (Gradio app in Docker) |
 
 ---
@@ -143,7 +143,7 @@ Each module was disabled in turn on the same 928 test blocks (`evaluate.py`; ext
 ### Quickstart Commands
 ```bash
 # 1. Clone the repository and install dependencies
-git clone [https://github.com/<user>/hybrid-isp]
+git clone https://github.com/spandana13-code/hybrid-isp
 cd hybrid-isp
 pip install -r requirements.txt
 
@@ -166,7 +166,7 @@ python evaluate.py --team TXX --usns "USN1,USN2,USN3,USN4"
 ---
 
 ### Student Submission Checklist
-- [ ] Working GitHub repository link included with an updated `README.md`.
+- [x] Working GitHub repository link included with an updated `README.md`.
 - [x] No raw code pasted into this report.
 - [x] All table metrics match test runs reproducible via the repository (`evaluate.py` → `eval_P2_<team>.md`).
 - [ ] All team member details accurately recorded.
