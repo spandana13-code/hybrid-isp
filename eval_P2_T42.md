@@ -1,6 +1,6 @@
-1RUA24CSE0507,1RUA24CSE0509,1RUA24CSE0510,1RUA24CSE0511
+1RUA24CSE0510,1RUA24CSE0511,1RUA24CSE0509,1RUA24CSE0507
 
-# Evaluation – Problem P2 (Hybrid Smartphone ISP) – Team TXX
+# Evaluation – Problem P2 (Hybrid Smartphone ISP) – Team T42 (Rebels)
 
 **Test set: official SIDD benchmark** – 928 blocks of 256×256 real noisy RAW (29 capture instances, 5 smartphones: Google Pixel, iPhone 7, Nexus 6, LG G4, Galaxy S6) with SIDD's clean sRGB ground truth. No test instance is used in training, colour calibration or model selection. The test set ships without per-image metadata, so white balance is *estimated* by every pipeline; the camera colour matrix comes from the per-camera calibration fitted on training captures.
 

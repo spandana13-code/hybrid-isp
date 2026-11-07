@@ -170,7 +170,7 @@ real conditions: thirds of the *measured* noise level, thirds of scene brightnes
 
 ## 10. Results, ablation and failure-case analysis
 
-Full tables: `eval_P2_<team>.md`; per-block rows: `results/eval_rows.json`.
+Full tables: `eval_P2_T42.md`; per-block rows: `results/eval_rows.json`.
 
 ![comparison](comparison.jpg)
 

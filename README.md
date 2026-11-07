@@ -36,7 +36,7 @@ trained and tested on **SIDD**, real noisy RAW from 5 phones.
 - **After quantisation:** the hybrid loses only 0.05 dB with mixed-precision INT8, while the learned ISP loses 0.5 dB. That makes the hybrid the best deployable model.
 - **Main failure case:** white balance on single-colour close-ups, which every pipeline shares.
 
-Full tables are in [`eval_P2_TXX.md`](eval_P2_TXX.md), and the analysis is in [`docs/DESIGN.md`](docs/DESIGN.md) §10.
+Full tables are in [`eval_P2_T42.md`](eval_P2_T42.md), and the analysis is in [`docs/DESIGN.md`](docs/DESIGN.md) §10.
 
 ![comparison](docs/comparison.jpg)
 
@@ -107,7 +107,7 @@ Seeds are fixed. Latency varies with the CPU.
 | `models/` | exported FP32 / FP16 / INT8 ONNX models |
 | `docs/DESIGN.md`, `docs/architecture.*` | design document and architecture diagram |
 | `docs/SOLUTION_REPORT.md` | hackathon solution report (submission template) |
-| `eval_P2_<team>.md`, `results/` | evaluation report, per-block metrics, ablation, failure-case panels |
+| `eval_P2_T42.md`, `results/` | evaluation report, per-block metrics, ablation, failure-case panels |
 
 ## Deploying the live URL (Hugging Face Spaces, free CPU)
 

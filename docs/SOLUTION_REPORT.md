@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Problem ID** | `P2` |
 | **Problem Title** | `Intelligent & Computationally Efficient Smartphone ISP (Hybrid RAW → sRGB pipeline)` |
-| **Team Name** | `Rebels` |
+| **Team Name** | `Rebels` (Team ID T42) |
 | **Team Members** | Titiksha Surana – 1RUA24CSE0507 · Pranaith Rushi Raju – 1RUA24CSE0509 · V Spandana – 1RUA24CSE0510 · Vaibhav K – 1RUA24CSE0511 |
 | **GitHub Repository** | `https://github.com/spandana13-code/hybrid-isp` — evaluated commit `eaae99c` |
 | **Live Demo / Deployment** | `https://huggingface.co/spaces/vspandana72/hybrid-isp` (Gradio app, Hugging Face Spaces) |
@@ -63,7 +63,7 @@ Architecture diagram: `docs/architecture.png`. Full design rationale: `docs/DESI
 
 ## 3. Experimental Benchmarks & Evaluation
 
-All numbers come from the **official SIDD benchmark: 928 blocks of 256×256 real phone RAW** (29 capture instances, 5 phones), none of which were used in training, calibration or model selection. Reproduce with `python evaluate.py`; full tables are in `eval_P2_<team>.md` and per-block rows in `results/eval_rows.json`.
+All numbers come from the **official SIDD benchmark: 928 blocks of 256×256 real phone RAW** (29 capture instances, 5 phones), none of which were used in training, calibration or model selection. Reproduce with `python evaluate.py`; full tables are in `eval_P2_T42.md` and per-block rows in `results/eval_rows.json`.
 
 ### 3.1 Quantitative Benchmarks
 
@@ -154,7 +154,7 @@ python run_inference.py --input_dir ./examples/ --output_dir ./results/inference
 python app.py                      # → http://localhost:7860
 
 # 4. Reproduce the benchmark tables (needs the SIDD download, see README)
-python evaluate.py --team TXX --usns "USN1,USN2,USN3,USN4"
+python evaluate.py --team T42 --usns "1RUA24CSE0510,1RUA24CSE0511,1RUA24CSE0509,1RUA24CSE0507"
 ```
 
 ### Deployment Format
@@ -168,5 +168,5 @@ python evaluate.py --team TXX --usns "USN1,USN2,USN3,USN4"
 ### Student Submission Checklist
 - [x] Working GitHub repository link included with an updated `README.md`.
 - [x] No raw code pasted into this report.
-- [x] All table metrics match test runs reproducible via the repository (`evaluate.py` → `eval_P2_<team>.md`).
+- [x] All table metrics match test runs reproducible via the repository (`evaluate.py` → `eval_P2_T42.md`).
 - [x] All team member details accurately recorded.
