@@ -4,8 +4,8 @@
 | :--- | :--- |
 | **Problem ID** | `P2` |
 | **Problem Title** | `Intelligent & Computationally Efficient Smartphone ISP (Hybrid RAW → sRGB pipeline)` |
-| **Team Name** | `[Enter Registered Team Name]` |
-| **Team Members** | `[Full Name – USN]`, `[Full Name – USN]`, `[Full Name – USN]`, `[Full Name – USN]` |
+| **Team Name** | `Rebels` |
+| **Team Members** | Titiksha Surana – 1RUA24CSE0507 · Pranaith Rushi Raju – 1RUA24CSE0509 · V Spandana – 1RUA24CSE0510 · Vaibhav K – 1RUA24CSE0511 |
 | **GitHub Repository** | `https://github.com/spandana13-code/hybrid-isp` — evaluated commit `eaae99c` |
 | **Live Demo / Deployment** | `[https://huggingface.co/spaces/<user>/hybrid-isp]` (Gradio app in Docker) |
 
@@ -169,4 +169,4 @@ python evaluate.py --team TXX --usns "USN1,USN2,USN3,USN4"
 - [x] Working GitHub repository link included with an updated `README.md`.
 - [x] No raw code pasted into this report.
 - [x] All table metrics match test runs reproducible via the repository (`evaluate.py` → `eval_P2_<team>.md`).
-- [ ] All team member details accurately recorded.
+- [x] All team member details accurately recorded.

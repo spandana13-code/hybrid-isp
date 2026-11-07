@@ -279,11 +279,13 @@ the mixed-precision choice.
 3. Knowledge distillation: a larger hybrid teacher → the current 187 k student.
 4. Mobile benchmark via ONNX Runtime Mobile / TFLite with XNNPACK or NNAPI on an Android phone.
 
-## 14. Team roles (fill in)
+## 14. Team roles
+
+Team **Rebels**
 
 | Member (USN) | Owns | Can explain |
 |---|---|---|
-| | classical stages, adaptive controller, calibration | `isp/classical.py`, `isp/sidd.py` (calibration) |
-| | dataset pipeline, CFA handling | `isp/sidd.py`, `isp/data.py`, `isp/io.py` |
-| | models, training, quantisation | `isp/models.py`, `train.py`, `optimize.py` |
-| | evaluation, app & deployment | `evaluate.py`, `app.py`, `Dockerfile` |
+| Titiksha Surana (1RUA24CSE0507) | classical stages, adaptive controller, calibration | `isp/classical.py`, `isp/sidd.py` (calibration) |
+| Pranaith Rushi Raju (1RUA24CSE0509) | dataset pipeline, CFA handling | `isp/sidd.py`, `isp/data.py`, `isp/io.py` |
+| V Spandana (1RUA24CSE0510) | models, training, quantisation | `isp/models.py`, `train.py`, `optimize.py` |
+| Vaibhav K (1RUA24CSE0511) | evaluation, app & deployment | `evaluate.py`, `app.py`, `Dockerfile`, `run_inference.py` |
