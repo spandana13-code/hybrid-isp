@@ -2,7 +2,11 @@
 
     python app.py            # http://localhost:7860
 
-Lab tab: pick an example (or upload a phone DNG / JPG), compare any two pipeline outputs with a
+The main page (web/index.html) is a custom front-end served by FastAPI: walk an image through every
+ISP stage, compare pipelines with a four-way loupe, and read the scores. The Gradio interface below is
+mounted at /classic (same processing, plus the Gradio API).
+
+Classic view, Lab tab: pick an example (or upload a phone DNG / JPG), compare any two pipeline outputs with a
 before/after slider, read the headline gain, metrics and the adaptive controller's decisions.
 Results tab: the official SIDD benchmark numbers, robustness, optimisation and figures.
 """
@@ -279,7 +283,7 @@ HEADER = ("<div id='hdr'><div class='brand'>Hybrid ISP<small>classical + learned
 
 THEME = gr.themes.Soft(primary_hue="indigo", neutral_hue="slate")
 
-with gr.Blocks(title="Hybrid Smartphone ISP") as demo:
+with gr.Blocks(title="Hybrid Smartphone ISP · classic view") as demo:
     gr.HTML(HEADER)
     views_state = gr.State({})
     path_state = gr.State(EX_PATHS[0] if EX_PATHS else None)
@@ -338,6 +342,178 @@ with gr.Blocks(title="Hybrid Smartphone ISP") as demo:
     swap.click(lambda a, b: (b, a), [left, right], [left, right])
     demo.load(process, inputs, outputs, **sp)
 
+# ============================================================================= custom front-end + JSON API
+import base64
+import tempfile
+import uuid
+
+import uvicorn
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+
+from isp.classical import preprocess, analyze, apply_wb, demosaic, apply_ccm, tone_map, sharpen, CAM2RGB_NOMINAL
+from isp.data import hybrid_inputs
+from isp.engine import _pad
+from isp.raw_sim import linear_to_srgb
+
+WEB = os.path.join(ROOT, "web")
+UPLOADS = os.path.join(tempfile.gettempdir(), "hybrid_isp_uploads")
+os.makedirs(UPLOADS, exist_ok=True)
+MAX_UPLOAD = 80 * 1024 * 1024
+
+
+def _data_url(im_u8, lossless):
+    bgr = cv2.cvtColor(im_u8, cv2.COLOR_RGB2BGR)
+    if lossless:
+        ok, buf = cv2.imencode(".png", bgr, [cv2.IMWRITE_PNG_COMPRESSION, 3])
+        mime = "png"
+    else:
+        ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
+        mime = "jpeg"
+    return f"data:image/{mime};base64," + base64.b64encode(buf.tobytes()).decode()
+
+
+def _mosaic_rgb(raw01, gain):
+    """Bayer mosaic shown as the sensor sees it: each photosite lit in its own filter colour (RGGB)."""
+    v = linear_to_srgb(np.clip(raw01 * gain, 0, 1))
+    out = np.zeros(raw01.shape + (3,), np.float32)
+    out[0::2, 0::2, 0] = v[0::2, 0::2]
+    out[0::2, 1::2, 1] = v[0::2, 1::2]
+    out[1::2, 0::2, 1] = v[1::2, 0::2]
+    out[1::2, 1::2, 2] = v[1::2, 1::2]
+    return out
+
+
+def _trace(raw_dn, eng, fe):
+    """Run the hybrid pipeline and keep every intermediate image (display-ready, gamma-encoded)."""
+    ccm, wb, gain, knee = fe.get("ccm"), fe.get("wb"), fe.get("gain"), fe.get("knee", 0.8)
+    raw = preprocess(raw_dn)
+    info = analyze(raw, wb=wb, gain=gain)
+    g = info["gain"]
+    raw_wb = apply_wb(raw, info["wb_gains"])
+    rgb = demosaic(np.clip(raw_wb, 0, 1), "ea")
+    rgb_ccm = apply_ccm(rgb, CAM2RGB_NOMINAL if ccm is None else ccm)
+    x_tone = tone_map(rgb_ccm * g, knee)
+    x, nm, thumb, _, _ = hybrid_inputs(raw_dn, **fe)
+    xp, h, w = _pad(x, 8)
+    np_, _, _ = _pad(nm, 8)
+    net = np.clip(eng.models["hybrid"](xp, np_, thumb)[:h, :w], 0, 1)
+    final = np.clip(sharpen(net, 0.5 * info["sharpen"]), 0, 1)
+    nmn = nm[..., 0] / max(float(nm.max()), 1e-6)
+    noise_vis = cv2.applyColorMap((np.clip(nmn, 0, 1) * 255).astype(np.uint8), cv2.COLORMAP_MAGMA)[..., ::-1] / 255.0
+    wbg = info["wb_gains"]
+    stages = [
+        ("mosaic", "Sensor mosaic", "What the sensor records: one colour per photosite through the RGGB filter, with all its noise."),
+        ("wb", "White balance", f"Red ×{wbg[0]:.2f} and blue ×{wbg[1]:.2f} so a grey object reads grey ({info['wb_source']} white balance)."),
+        ("demosaic", "Demosaic", "Edge-aware interpolation fills in the two missing colours at every pixel."),
+        ("ccm", "Colour matrix", "The camera's colours are mapped to sRGB with a per-phone calibrated 3×3 matrix."),
+        ("tone", "Tone curve", "The sRGB curve encodes linear light for display. This is the classical front-end's output."),
+        ("noise", "Noise map", f"The controller measured noise σ = {info['noise_sigma']:.3f}. Brighter means noisier; the network uses this map."),
+        ("net", "Neural correction", "The 187 k-parameter network removes noise and artefacts and fixes the global colour."),
+        ("final", "Output", "A light, noise-aware sharpen gives the final hybrid image."),
+    ]
+    imgs = {"mosaic": _mosaic_rgb(raw, g), "wb": _mosaic_rgb(np.clip(raw_wb, 0, 1), g),
+            "demosaic": linear_to_srgb(np.clip(rgb * g, 0, 1)), "ccm": linear_to_srgb(np.clip(rgb_ccm * g, 0, 1)),
+            "tone": x_tone, "noise": noise_vis, "net": net, "final": final}
+    return stages, imgs, info
+
+
+class RunRequest(BaseModel):
+    example: int | None = None
+    upload: str | None = None
+    precision: str = "int8"
+    condition: str = "low_light"
+
+
+api = FastAPI(title="Hybrid ISP", docs_url="/api/docs", redoc_url=None)
+
+
+@api.get("/")
+def index():
+    return FileResponse(os.path.join(WEB, "index.html"))
+
+
+@api.get("/api/examples")
+def examples():
+    out = []
+    for i, (_, path, thumb, cap) in enumerate(EXAMPLES):
+        parts = cap.split(" · ")
+        out.append(dict(id=i, title=" · ".join(parts[:-1]) or parts[0], kind=parts[-1],
+                        real=path.endswith(".npz"), thumb=_data_url(thumb, False)))
+    return out
+
+
+@api.post("/api/upload")
+async def upload(file: UploadFile = File(...)):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in {".dng", ".cr2", ".cr3", ".nef", ".arw", ".raf", ".orf", ".rw2", ".pef", ".srw",
+                   ".npz", ".npy", ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}:
+        raise HTTPException(400, f"Unsupported file type '{ext or '?'}'. Use a phone DNG/RAW, .npz/.npy, or JPG/PNG.")
+    data = await file.read()
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(413, "File is larger than 80 MB.")
+    token = uuid.uuid4().hex + ext
+    with open(os.path.join(UPLOADS, token), "wb") as fh:
+        fh.write(data)
+    return dict(token=token, name=file.filename)
+
+
+@api.post("/api/run")
+def run_api(req: RunRequest):
+    if req.example is not None:
+        if not 0 <= req.example < len(EX_PATHS):
+            raise HTTPException(404, "Unknown example.")
+        path, title = EX_PATHS[req.example], EX_TITLES[req.example]
+    elif req.upload:
+        path = os.path.join(UPLOADS, os.path.basename(req.upload))
+        if not os.path.exists(path):
+            raise HTTPException(404, "Upload expired. Choose the file again.")
+        title = "Your file"
+    else:
+        raise HTTPException(400, "Choose an example or upload a file.")
+    cond = req.condition if req.condition in CONDITIONS else "low_light"
+    precision = "FP32" if req.precision.lower() == "fp32" else "INT8 (quantised)"
+    try:
+        raw, fe, gt, cfa, source, deg = build_raw(path, cond, 0.25, 0.004, 0.6, 7)
+        eng = ENGINES[precision]
+        outs, times = {}, {}
+        outs["classical"], info, times["classical"] = eng.classical(raw, **fe)
+        outs["learned"], _, times["learned"] = eng.learned(raw, info, **fe)
+        outs["hybrid"], _, times["hybrid"] = eng.hybrid(raw, **fe)
+        stages, simgs, sinfo = _trace(raw, eng, fe)
+    except InputError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"Processing failed: {type(e).__name__}: {e}")
+
+    h, w = raw.shape
+    lossless = h * w <= 512 * 512
+    enc = lambda im: _data_url(to_u8(to_rggb(np.clip(im, 0, 1).astype(np.float32), cfa)), lossless)
+    metrics = {}
+    for k, im in outs.items():
+        m = dict(ms=round(sum(times[k].values()), 1))
+        if gt is not None:
+            m.update(psnr=round(psnr(gt, im), 2), ssim=round(ssim(gt, im), 4),
+                     de=round(delta_e(gt, im), 2), gmsd=round(gmsd(gt, im), 4))
+        metrics[k] = m
+    images = {k: enc(v) for k, v in outs.items()}
+    if gt is not None:
+        images["gt"] = enc(gt)
+    return JSONResponse(dict(
+        title=title, source=source, width=w, height=h, precision=precision, has_gt=gt is not None,
+        images=images, metrics=metrics,
+        stages=[dict(key=k, name=n, desc=d, img=enc(simgs[k])) for k, n, d in stages],
+        controller=dict(scene=info["scene"], noise_sigma=round(info["noise_sigma"], 4), gain=round(info["gain"], 2),
+                        wb_source=info["wb_source"], wb_r=round(info["wb_gains"][0], 2),
+                        wb_b=round(info["wb_gains"][1], 2), denoise_h=round(info["denoise_h"], 1),
+                        sharpen=round(info["sharpen"], 2)),
+        simulated=deg,
+    ))
+
+
+api = gr.mount_gradio_app(api, demo.queue(max_size=16), path="/classic", css=CSS, theme=THEME)
+
 if __name__ == "__main__":
-    demo.queue(max_size=16).launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)),
-                                   css=CSS, theme=THEME)
+    uvicorn.run(api, host="0.0.0.0", port=int(os.environ.get("PORT", 7860)))

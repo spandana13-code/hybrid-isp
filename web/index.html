@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hybrid ISP — Team Rebels</title>
+<meta name="description" content="Raw smartphone sensor data in, a finished photo out: a classical camera pipeline and a small neural network working together.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<style>
+/* Tokens. The page sits on 18 % grey, the neutral surround photographers use to judge colour.
+   The three pipelines take the three sensor primaries. */
+:root{
+  --grey:#737373; --grey-dark:#636363; --grey-light:#858585; --rule:#8c8c8c;
+  --black:#000; --white:#fff; --soft:#e6e6e6;
+  --classical:#ff5a4e; --learned:#3ddc84; --hybrid:#5aa0ff; --truth:#ffffff;
+  --mat:#000;
+  --f:"Archivo", "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--grey)}
+body{margin:0;color:var(--white);font-family:var(--f);font-size:16px;line-height:1.5;
+  font-variation-settings:"wdth" 100;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--white);outline-offset:3px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+.wrap{max-width:1360px;margin:0 auto;padding:0 32px}
+.num{font-variant-numeric:tabular-nums;font-variation-settings:"wdth" 75}
+
+/* Masthead */
+header{padding:28px 0 6px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
+h1{margin:0;color:var(--black);font-weight:900;font-variation-settings:"wdth" 125;
+  font-size:clamp(52px,8vw,116px);line-height:.82;letter-spacing:-.02em}
+h1 .arrow{display:inline-block;font-variation-settings:"wdth" 62;font-weight:300;color:var(--white);margin:0 .04em}
+.lede{max-width:34ch;margin:0;font-size:18px;line-height:1.45;color:var(--white)}
+.team{margin:14px 0 0;font-size:14px;color:var(--soft)}
+
+/* Capture strip */
+.strip-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:18px 0 8px}
+h2{margin:0;font-weight:800;font-variation-settings:"wdth" 112;font-size:22px;letter-spacing:-.01em;color:var(--black)}
+.prec{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:3px}
+.prec button{padding:5px 14px;border-radius:999px;font-size:14px;white-space:nowrap}
+.prec button[aria-pressed="true"]{background:var(--black);color:var(--white)}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity}
+.cap{flex:0 0 auto;width:132px;text-align:left;scroll-snap-align:start}
+.cap img{width:132px;height:76px;object-fit:cover;display:block;border:2px solid transparent;
+  background:#555;image-rendering:auto}
+.cap span{display:block;font-size:13px;line-height:1.25;margin-top:6px;color:var(--white)}
+.cap small{display:block;font-size:12px;color:var(--soft);font-variation-settings:"wdth" 85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap[aria-pressed="true"] img{border-color:var(--white)}
+.cap:hover img{border-color:var(--rule)}
+.cap.up{display:flex;flex-direction:column}
+.cap.up .drop{width:132px;height:76px;border:2px dashed var(--soft);display:grid;place-items:center;
+  font-size:13px;text-align:center;padding:6px;color:var(--white)}
+.cap.up.drag .drop{background:var(--grey-light)}
+
+/* Stage: viewer + rail */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;margin-top:8px}
+.modes{display:flex;gap:22px;margin-bottom:10px}
+.modes button{font-size:17px;font-weight:700;font-variation-settings:"wdth" 110;padding-bottom:4px;
+  border-bottom:3px solid transparent;color:var(--soft)}
+.modes button[aria-selected="true"]{color:var(--white);border-color:var(--white)}
+.viewer{position:relative;background:var(--mat);height:min(68vh,640px);min-height:340px;
+  display:grid;place-items:center;overflow:hidden;cursor:crosshair}
+.viewer img.main{max-width:calc(100% - 64px);max-height:calc(100% - 64px);image-rendering:pixelated;
+  display:block;user-select:none;-webkit-user-drag:none}
+/* crop marks: the viewer reads as a print on a light table */
+.viewer::before,.viewer::after{content:"";position:absolute;width:22px;height:22px;pointer-events:none;
+  border-color:#5c5c5c;border-style:solid}
+.viewer::before{top:14px;left:14px;border-width:1px 0 0 1px}
+.viewer::after{bottom:14px;right:14px;border-width:0 1px 1px 0}
+.vcap{display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-top:12px;min-height:52px}
+.vcap b{font-weight:800;font-variation-settings:"wdth" 112;font-size:20px}
+.vcap p{margin:2px 0 0;max-width:62ch;color:var(--soft);font-size:15px}
+.vcap .dims{font-size:14px;color:var(--soft);white-space:nowrap}
+.status{position:absolute;inset:0;display:grid;place-items:center;color:var(--soft);font-size:15px;
+  text-align:center;padding:24px;pointer-events:none}
+.status.err{color:#ffb4ad}
+.bar{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--white);transition:width .3s}
+.loading .bar{width:70%;transition:width 8s cubic-bezier(.1,.6,.2,1)}
+
+/* Loupe */
+.loupe{position:absolute;width:232px;height:232px;border-radius:50%;pointer-events:none;display:none;
+  box-shadow:0 0 0 2px var(--white),0 10px 40px rgba(0,0,0,.6);overflow:hidden;z-index:3}
+.loupe canvas{width:100%;height:100%;display:block}
+.compare .loupe.on{display:block}
+
+/* Rail */
+.rail{border-left:1px solid var(--rule);padding-left:22px;display:flex;flex-direction:column}
+.rail h3{margin:0 0 4px;font-size:15px;font-weight:600;color:var(--soft)}
+.rail ol{list-style:none;margin:0;padding:0;counter-reset:s}
+.rail li button{width:100%;display:grid;grid-template-columns:28px 1fr 46px;gap:10px;align-items:center;
+  padding:7px 0;text-align:left;position:relative}
+.rail li button::before{counter-increment:s;content:counter(s);font-variation-settings:"wdth" 75;
+  font-size:14px;color:var(--soft);font-variant-numeric:tabular-nums}
+.rail li button .n{font-size:16px;font-weight:600;font-variation-settings:"wdth" 104}
+.rail li button img{width:46px;height:31px;object-fit:cover;image-rendering:pixelated;background:#555;opacity:.55}
+.rail li button[aria-current="true"] .n{font-weight:850}
+.rail li button[aria-current="true"] img{opacity:1;outline:2px solid var(--white)}
+.rail li button[aria-current="true"]::after{content:"";position:absolute;left:-24px;top:6px;bottom:6px;
+  width:3px;background:var(--white)}
+.rail li.done button img{opacity:.9}
+.again{margin-top:14px;align-self:flex-start;font-size:14px;font-weight:600;border-bottom:1px solid var(--white)}
+.legend button{grid-template-columns:14px 1fr auto !important}
+.legend button::before{content:"" !important;width:14px;height:14px;background:var(--c)}
+.legend .v{font-size:14px;color:var(--soft);text-align:right}
+.hint{font-size:13px;color:var(--soft);margin:14px 0 0}
+
+/* Verdict + scores */
+.verdict{margin:56px 0 0;max-width:30ch;font-weight:800;font-variation-settings:"wdth" 118;
+  font-size:clamp(28px,3.6vw,48px);line-height:1.04;letter-spacing:-.015em;color:var(--black)}
+.scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;margin-top:30px}
+.metric h4{margin:0 0 2px;font-size:16px;font-weight:700;font-variation-settings:"wdth" 108}
+.metric p{margin:0 0 12px;font-size:13px;color:var(--soft)}
+.row{display:grid;grid-template-columns:78px 1fr 58px;gap:10px;align-items:center;margin:7px 0;font-size:14px}
+.row .track{height:14px;background:var(--grey-dark)}
+.row .fill{height:100%;background:var(--c);width:0;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.row .val{text-align:right}
+.row.best .val{font-weight:800}
+.controller{margin:34px 0 0;max-width:72ch;font-size:17px;line-height:1.6;color:var(--white)}
+.controller b{font-variation-settings:"wdth" 80;font-variant-numeric:tabular-nums}
+
+/* Benchmark */
+.bench{margin:72px 0 0;padding-top:28px;border-top:1px solid var(--rule)}
+.bench .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px;margin-top:22px}
+.group h4{margin:0 0 10px;font-size:15px;font-weight:700}
+.cols{display:flex;align-items:flex-end;gap:8px;height:170px;border-bottom:1px solid var(--rule)}
+.col{flex:1;background:var(--c);position:relative;min-height:2px}
+.col span{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:13px;white-space:nowrap}
+.facts{margin:28px 0 0;max-width:72ch;font-size:17px;color:var(--white)}
+.keys{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;font-size:14px;color:var(--soft)}
+.keys i{display:inline-block;width:12px;height:12px;background:var(--c);margin-right:7px;vertical-align:-1px}
+footer{margin:72px 0 0;padding:22px 0 44px;border-top:1px solid var(--rule);display:flex;gap:26px;
+  flex-wrap:wrap;font-size:15px}
+footer a{text-decoration:none;border-bottom:1px solid var(--soft)}
+footer .who{margin-left:auto;color:var(--soft)}
+
+@media (max-width:960px){
+  .stage{grid-template-columns:1fr}
+  .rail{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:16px}
+  .rail li button[aria-current="true"]::after{display:none}
+  .scores,.bench .grid{grid-template-columns:1fr 1fr}
+  header{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .scores,.bench .grid{grid-template-columns:1fr}
+  .viewer{height:52vh;min-height:300px}
+  .viewer img.main{max-width:calc(100% - 24px);max-height:calc(100% - 24px)}
+  .vcap{flex-direction:column;gap:4px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Raw<span class="arrow">→</span>Photo</h1>
+    </div>
+    <div>
+      <p class="lede">A smartphone sensor records a noisy mosaic, not a picture. This hybrid camera pipeline turns it into one: classical stages where the physics is known, a 187 k-parameter network where it isn't.</p>
+      <p class="team">Hybrid ISP, Problem P2. Team Rebels (T42).</p>
+    </div>
+  </header>
+
+  <section aria-labelledby="pick">
+    <div class="strip-head">
+      <h2 id="pick">Choose a capture</h2>
+      <div class="prec" role="group" aria-label="Neural network precision">
+        <button type="button" data-prec="int8" aria-pressed="true">INT8, deployed</button>
+        <button type="button" data-prec="fp32" aria-pressed="false">FP32</button>
+      </div>
+    </div>
+    <div class="strip" id="strip" role="list"></div>
+  </section>
+
+  <section class="stage" aria-label="Image viewer">
+    <div>
+      <div class="modes" role="tablist" aria-label="Viewer mode">
+        <button type="button" role="tab" id="m-walk" aria-selected="true">Walk the pipeline</button>
+        <button type="button" role="tab" id="m-cmp" aria-selected="false">Compare results</button>
+      </div>
+      <div class="viewer" id="viewer" tabindex="0" aria-describedby="vdesc">
+        <img class="main" id="main" alt="">
+        <div class="loupe" id="loupe"><canvas id="lcv" width="464" height="464"></canvas></div>
+        <div class="status" id="status">Choose a capture to develop it.</div>
+        <div class="bar"></div>
+      </div>
+      <div class="vcap">
+        <div><b id="vname">&nbsp;</b><p id="vdesc"></p></div>
+        <div class="dims num" id="dims"></div>
+      </div>
+    </div>
+
+    <aside class="rail" id="rail">
+      <div id="walk">
+        <h3>Hybrid pipeline, in order</h3>
+        <ol id="stages"></ol>
+        <button type="button" class="again" id="again">Develop again</button>
+      </div>
+      <div id="cmp" hidden>
+        <h3>Final images</h3>
+        <ol class="legend" id="legend"></ol>
+        <p class="hint">Move over the image. The loupe shows the same spot four ways, enlarged until single pixels show: classical top left, learned top right, hybrid bottom left, ground truth bottom right. The coloured squares at the centre match the list above.</p>
+      </div>
+    </aside>
+  </section>
+
+  <section aria-live="polite">
+    <p class="verdict" id="verdict"></p>
+    <div class="scores" id="scores"></div>
+    <p class="controller" id="controller"></p>
+  </section>
+
+  <section class="bench" aria-labelledby="bench-h">
+    <h2 id="bench-h">On the official benchmark</h2>
+    <p class="facts">928 blocks of real phone RAW from five phones, none of them used in training. Average PSNR in dB, higher is better.</p>
+    <div class="keys">
+      <span><i style="--c:var(--classical)"></i>Classical ISP</span>
+      <span><i style="--c:var(--learned)"></i>Learned ISP, INT8</span>
+      <span><i style="--c:var(--hybrid)"></i>Hybrid ISP, INT8</span>
+    </div>
+    <div class="grid" id="bench"></div>
+    <p class="facts">The deployed hybrid is a 488 KB model and processes a megapixel in about 285 ms on two CPU threads. Quantising it to INT8 cost 0.05 dB; the same step cost the end-to-end network ten times more.</p>
+  </section>
+
+  <footer>
+    <a href="https://github.com/spandana13-code/hybrid-isp">Code on GitHub</a>
+    <a href="https://github.com/spandana13-code/hybrid-isp/blob/main/docs/Solution_Report_P2_T42_Rebels.pdf">Solution report</a>
+    <a href="https://github.com/spandana13-code/hybrid-isp/blob/main/docs/DESIGN.md">Design document</a>
+    <a href="/classic/">Classic view</a>
+    <span class="who">Titiksha Surana, Pranaith Rushi Raju, V Spandana, Vaibhav K</span>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const PIPES = [
+  {k:"classical", name:"Classical ISP", c:"var(--classical)"},
+  {k:"learned",   name:"Learned ISP",   c:"var(--learned)"},
+  {k:"hybrid",    name:"Hybrid ISP",    c:"var(--hybrid)"},
+  {k:"gt",        name:"Ground truth",  c:"var(--truth)"},
+];
+const BENCH = [
+  {t:"All 928 blocks", v:[26.25, 28.69, 29.12]},
+  {t:"Dark scenes",    v:[26.37, 31.42, 31.92]},
+  {t:"High noise",     v:[24.81, 27.62, 27.88]},
+  {t:"Bright scenes",  v:[26.88, 27.14, 27.02]},
+];
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let state = {sel:{example:0}, prec:"int8", data:null, stage:7, mode:"walk", show:"hybrid", timer:null, imgs:{}};
+
+/* ---------- capture strip ---------- */
+async function loadExamples(){
+  const ex = await (await fetch("api/examples")).json();
+  const strip = $("#strip");
+  ex.forEach(e => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "cap"; b.setAttribute("role","listitem");
+    b.setAttribute("aria-pressed", e.id === 0 ? "true" : "false");
+    b.innerHTML = `<img src="${e.thumb}" alt=""><span>${e.title}</span><small>${e.real ? "Phone RAW, " + e.kind : "Photo, simulated sensor"}</small>`;
+    b.onclick = () => { select(b); state.sel = {example:e.id}; run(); };
+    strip.appendChild(b);
+  });
+  const up = document.createElement("label");
+  up.className = "cap up"; up.setAttribute("role","listitem");
+  up.innerHTML = `<input type="file" hidden accept=".dng,.cr2,.cr3,.nef,.arw,.raf,.orf,.rw2,.npz,.npy,.png,.jpg,.jpeg,.tif,.tiff,.webp"><span class="drop">Drop a phone DNG or photo, or click to choose</span><span>Your own file</span><small>DNG, RAW, .npz, JPG or PNG</small>`;
+  const inp = up.querySelector("input");
+  inp.onchange = () => inp.files[0] && sendFile(inp.files[0], up);
+  ["dragenter","dragover"].forEach(ev => up.addEventListener(ev, e => {e.preventDefault(); up.classList.add("drag");}));
+  ["dragleave","drop"].forEach(ev => up.addEventListener(ev, e => {e.preventDefault(); up.classList.remove("drag");}));
+  up.addEventListener("drop", e => e.dataTransfer.files[0] && sendFile(e.dataTransfer.files[0], up));
+  strip.appendChild(up);
+}
+function select(el){ document.querySelectorAll(".cap").forEach(c => c.setAttribute("aria-pressed", c === el ? "true" : "false")); }
+async function sendFile(file, el){
+  select(el); setStatus("Uploading " + file.name + "…", true);
+  const fd = new FormData(); fd.append("file", file);
+  const r = await fetch("api/upload", {method:"POST", body:fd});
+  const j = await r.json();
+  if(!r.ok){ setStatus(j.detail || "Upload failed.", false, true); return; }
+  state.sel = {upload:j.token}; run();
+}
+
+/* ---------- run ---------- */
+function setStatus(msg, loading, err){
+  const s = $("#status"); s.textContent = msg || ""; s.classList.toggle("err", !!err);
+  $("#viewer").classList.toggle("loading", !!loading);
+}
+async function run(){
+  clearInterval(state.timer);
+  setStatus("Developing…", true);
+  $("#main").style.opacity = .25;
+  try{
+    const r = await fetch("api/run", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({...state.sel, precision:state.prec})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.detail || "Processing failed.");
+    state.data = j; state.imgs = {};
+    [...Object.entries(j.images), ...j.stages.map(s => [s.key, s.img])].forEach(([k, src]) => {
+      const im = new Image(); im.src = src; state.imgs[k] = im;
+    });
+    setStatus("", false);
+    $("#main").style.opacity = 1;
+    $("#dims").textContent = `${j.width} × ${j.height} px, ${j.precision}`;
+    renderRail(); renderScores(); renderLegend();
+    if(state.mode === "walk") develop(); else showCompare(state.show);
+  }catch(e){
+    setStatus(e.message, false, true); $("#main").style.opacity = 0;
+  }
+}
+
+/* ---------- walk mode ---------- */
+function renderRail(){
+  const ol = $("#stages"); ol.innerHTML = "";
+  state.data.stages.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<button type="button"><span class="n">${s.name}</span><img src="${s.img}" alt=""></button>`;
+    li.querySelector("button").onclick = () => { clearInterval(state.timer); showStage(i); };
+    ol.appendChild(li);
+  });
+}
+function showStage(i){
+  const d = state.data; if(!d) return;
+  state.stage = i;
+  const s = d.stages[i];
+  $("#main").src = s.img; $("#main").alt = s.name;
+  $("#vname").textContent = s.name; $("#vdesc").textContent = s.desc;
+  document.querySelectorAll("#stages li").forEach((li, j) => {
+    li.classList.toggle("done", j < i);
+    li.querySelector("button").setAttribute("aria-current", j === i ? "true" : "false");
+  });
+}
+function develop(){
+  clearInterval(state.timer);
+  const last = state.data.stages.length - 1;
+  if(reduced){ showStage(last); return; }
+  let i = 0; showStage(0);
+  state.timer = setInterval(() => { i++; showStage(i); if(i >= last) clearInterval(state.timer); }, 520);
+}
+
+/* ---------- compare mode ---------- */
+function renderLegend(){
+  const d = state.data, ol = $("#legend"); ol.innerHTML = "";
+  PIPES.filter(p => d.images[p.k]).forEach(p => {
+    const m = d.metrics[p.k];
+    const v = m && d.has_gt ? `${m.psnr.toFixed(2)} dB` : (m ? `${Math.round(m.ms)} ms` : "reference");
+    const li = document.createElement("li");
+    li.innerHTML = `<button type="button" style="--c:${p.c}"><span class="n">${p.name}</span><span class="v num">${v}</span></button>`;
+    li.querySelector("button").onclick = () => showCompare(p.k);
+    ol.appendChild(li);
+  });
+}
+function showCompare(k){
+  const d = state.data; if(!d) return;
+  if(!d.images[k]) k = "hybrid";
+  state.show = k;
+  const p = PIPES.find(x => x.k === k);
+  $("#main").src = d.images[k]; $("#main").alt = p.name;
+  $("#vname").textContent = p.name;
+  const m = d.metrics[k];
+  $("#vdesc").textContent = k === "gt" ? "The dataset's clean reference, averaged from about 150 frames."
+    : d.has_gt ? `PSNR ${m.psnr} dB, SSIM ${m.ssim}, colour error ΔE ${m.de}, ${Math.round(m.ms)} ms.`
+               : `${Math.round(m.ms)} ms. No reference exists for your own file, so judge it by eye.`;
+  document.querySelectorAll("#legend li").forEach(li => {
+    const b = li.querySelector("button"); b.setAttribute("aria-current", b.textContent.startsWith(p.name) ? "true" : "false");
+  });
+}
+function setMode(m){
+  state.mode = m;
+  $("#m-walk").setAttribute("aria-selected", m === "walk"); $("#m-cmp").setAttribute("aria-selected", m === "cmp");
+  $("#walk").hidden = m !== "walk"; $("#cmp").hidden = m !== "cmp";
+  $("#viewer").classList.toggle("compare", m === "cmp");
+  if(!state.data) return;
+  clearInterval(state.timer);
+  if(m === "walk") showStage(state.stage); else showCompare(state.show);
+}
+
+/* ---------- loupe ---------- */
+const viewer = $("#viewer"), loupe = $("#loupe"), lcv = $("#lcv"), ctx = lcv.getContext("2d");
+function drawLoupe(ev){
+  if(state.mode !== "cmp" || !state.data) return;
+  const img = $("#main"), r = img.getBoundingClientRect(), vr = viewer.getBoundingClientRect();
+  const x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height;
+  if(x < 0 || x > 1 || y < 0 || y > 1){ loupe.classList.remove("on"); return; }
+  loupe.classList.add("on");
+  let lx = ev.clientX - vr.left + 24, ly = ev.clientY - vr.top - 256;
+  if(lx + 232 > vr.width) lx = ev.clientX - vr.left - 256;
+  if(ly < 8) ly = ev.clientY - vr.top + 24;
+  loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
+  const W = state.data.width, H = state.data.height, span = Math.max(16, Math.round(Math.min(W, H) / 10));
+  const sx = Math.min(Math.max(0, x * W - span / 2), W - span), sy = Math.min(Math.max(0, y * H - span / 2), H - span);
+  const keys = PIPES.filter(p => state.data.images[p.k]).map(p => p.k);
+  const S = lcv.width, half = S / 2;
+  ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, S, S);
+  const quads = keys.length === 4 ? [[0,0],[half,0],[0,half],[half,half]] : [[0,0],[half,0],[0,half]];
+  keys.forEach((k, i) => {
+    const [qx, qy] = quads[i]; const w = keys.length === 3 && i === 2 ? S : half;
+    ctx.save(); ctx.beginPath(); ctx.rect(qx, qy, w, half); ctx.clip();
+    // every quadrant shows the same scene point at its centre
+    ctx.drawImage(state.imgs[k], sx, sy, span, span, qx + (w - half) / 2, qy, half, half);
+    ctx.restore();
+    const p = PIPES.find(z => z.k === k);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(p.c.slice(4, -1)).trim();
+    ctx.fillRect(i % 2 ? half + 10 : half - 30, i < 2 ? half - 30 : half + 10, 20, 20);
+  });
+  ctx.fillStyle = "#fff"; ctx.fillRect(half - 1, 0, 2, S); ctx.fillRect(0, half - 1, S, 2);
+}
+viewer.addEventListener("mousemove", drawLoupe);
+viewer.addEventListener("mouseleave", () => loupe.classList.remove("on"));
+viewer.addEventListener("touchmove", e => { drawLoupe(e.touches[0]); e.preventDefault(); }, {passive:false});
+
+/* ---------- scores ---------- */
+function renderScores(){
+  const d = state.data, m = d.metrics, c = m.classical, h = m.hybrid, l = m.learned;
+  if(d.has_gt){
+    const dc = h.psnr - c.psnr;
+    $("#verdict").innerHTML = dc >= 0
+      ? `On this capture the hybrid is ${dc.toFixed(1)} dB cleaner than the classical pipeline, and colour error falls from ${c.de.toFixed(1)} to ${h.de.toFixed(1)}.`
+      : `On this capture the classical pipeline wins by ${(-dc).toFixed(1)} dB. It is one of the known failure cases described in the report.`;
+  } else {
+    $("#verdict").innerHTML = `No reference exists for your file, so compare the three results by eye with the loupe.`;
+  }
+  const defs = d.has_gt ? [
+    {k:"psnr", t:"PSNR", s:"Closeness to the reference, in dB. Higher is better.", hi:true, f:v => v.toFixed(2)},
+    {k:"de",   t:"Colour error", s:"Mean CIEDE2000 ΔE. Lower is better.", hi:false, f:v => v.toFixed(2)},
+    {k:"ms",   t:"Time", s:"Milliseconds on two CPU threads. Lower is better.", hi:false, f:v => Math.round(v)},
+  ] : [{k:"ms", t:"Time", s:"Milliseconds on two CPU threads. Lower is better.", hi:false, f:v => Math.round(v)}];
+  $("#scores").innerHTML = defs.map(df => {
+    const vals = ["classical","learned","hybrid"].map(k => m[k][df.k]);
+    const max = Math.max(...vals), min = Math.min(...vals), best = df.hi ? max : min;
+    const lo = df.k === "psnr" ? Math.max(0, min - 6) : 0;
+    const rows = ["classical","learned","hybrid"].map((k, i) => {
+      const p = PIPES[i], v = vals[i], w = df.k === "psnr" ? (v - lo) / (max - lo) : v / max;
+      return `<div class="row${v === best ? " best" : ""}" style="--c:${p.c}"><span>${p.name.replace(" ISP","")}</span><div class="track"><div class="fill" data-w="${Math.max(.02, w) * 100}"></div></div><span class="val num">${df.f(v)}</span></div>`;
+    }).join("");
+    return `<div class="metric"><h4>${df.t}</h4><p>${df.s}</p>${rows}</div>`;
+  }).join("");
+  requestAnimationFrame(() => document.querySelectorAll(".fill").forEach(f => f.style.width = f.dataset.w + "%"));
+  const k = d.controller;
+  $("#controller").innerHTML = `Before any network ran, the controller measured noise at <b>σ ${k.noise_sigma}</b> and labelled the scene <b>${k.scene}</b>. That set the classical denoiser to strength <b>${k.denoise_h}</b> and sharpening to <b>${k.sharpen}</b>. White balance was ${k.wb_source === "metadata" ? "read from the file" : "estimated from the image"}: red <b>×${k.wb_r}</b>, blue <b>×${k.wb_b}</b>, with digital gain <b>×${k.gain}</b>.`;
+}
+
+/* ---------- benchmark ---------- */
+function renderBench(){
+  const lo = 22, hi = 33;
+  $("#bench").innerHTML = BENCH.map(g => `<div class="group"><h4>${g.t}</h4><div class="cols">${
+    g.v.map((v, i) => `<div class="col" style="--c:${PIPES[i].c};height:${(v - lo) / (hi - lo) * 100}%"><span class="num">${v.toFixed(1)}</span></div>`).join("")
+  }</div></div>`).join("");
+}
+
+/* ---------- wiring ---------- */
+$("#m-walk").onclick = () => setMode("walk");
+$("#m-cmp").onclick = () => setMode("cmp");
+$("#again").onclick = () => state.data && develop();
+document.querySelectorAll(".prec button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".prec button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  state.prec = b.dataset.prec; if(state.data) run();
+});
+viewer.addEventListener("keydown", e => {
+  if(!state.data) return;
+  if(state.mode === "walk" && (e.key === "ArrowRight" || e.key === "ArrowDown")){ clearInterval(state.timer); showStage(Math.min(state.stage + 1, state.data.stages.length - 1)); e.preventDefault(); }
+  if(state.mode === "walk" && (e.key === "ArrowLeft" || e.key === "ArrowUp")){ clearInterval(state.timer); showStage(Math.max(state.stage - 1, 0)); e.preventDefault(); }
+});
+renderBench();
+loadExamples().then(run).catch(() => setStatus("Could not reach the server. Reload the page.", false, true));
+</script>
+</body>
+</html>

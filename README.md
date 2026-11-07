@@ -55,6 +55,14 @@ Batch inference on a folder (writes one PNG per input and pipeline, plus `metric
 python run_inference.py --input_dir ./examples/ --output_dir ./results/inference/ --pipeline all
 ```
 
+The main page is a custom front-end (`web/index.html`, served by FastAPI in `app.py`):
+**Walk the pipeline** steps one image through all eight hybrid stages (sensor mosaic, white balance,
+demosaic, colour matrix, tone curve, noise map, neural correction, output); **Compare results** puts
+a four-way loupe (classical | learned | hybrid | ground truth) under the cursor. The previous Gradio
+interface is still available at `/classic`, and the JSON API at `/api/run` (docs at `/api/docs`).
+
+![app](docs/app_screenshot.png)
+
 The app accepts three kinds of input:
 
 - **Real SIDD RAW examples** (`.npz`), with ground truth, so metrics are shown.

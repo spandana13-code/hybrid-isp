@@ -1,7 +1,6 @@
 checkpoints/
 data/
 results/
-docs/
 *.md
 __pycache__/
 .git/

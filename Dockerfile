@@ -7,6 +7,8 @@ RUN pip install -r requirements.txt
 COPY isp ./isp
 COPY models ./models
 COPY examples ./examples
+COPY web ./web
+COPY docs ./docs
 COPY app.py .
 EXPOSE 7860
 CMD ["python", "app.py"]
