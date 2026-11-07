@@ -7,7 +7,7 @@
 | **Team Name** | `Rebels` |
 | **Team Members** | Titiksha Surana – 1RUA24CSE0507 · Pranaith Rushi Raju – 1RUA24CSE0509 · V Spandana – 1RUA24CSE0510 · Vaibhav K – 1RUA24CSE0511 |
 | **GitHub Repository** | `https://github.com/spandana13-code/hybrid-isp` — evaluated commit `eaae99c` |
-| **Live Demo / Deployment** | `[https://huggingface.co/spaces/<user>/hybrid-isp]` (Gradio app in Docker) |
+| **Live Demo / Deployment** | `https://huggingface.co/spaces/vspandana72/hybrid-isp` (Gradio app, Hugging Face Spaces) |
 
 ---
 
@@ -158,7 +158,7 @@ python evaluate.py --team TXX --usns "USN1,USN2,USN3,USN4"
 ```
 
 ### Deployment Format
-* **Gradio web UI inside a Docker container** (`Dockerfile`, port 7860, honours `$PORT`), hosted on Hugging Face Spaces (free CPU).
+* **Gradio web UI.** The repo also ships a `Dockerfile` (port 7860, honours `$PORT`) for container hosting; the live demo is hosted on Hugging Face Spaces at https://huggingface.co/spaces/vspandana72/hybrid-isp. The Space runs the same `app.py`, downloading this repository at start-up (launcher in `hf_space/`).
 * Inference uses **ONNX Runtime** with the exported INT8 models (`models/*.onnx`), with FP16/FP32 selectable. PyTorch is not needed at runtime.
 * The app accepts phone DNG/RAW, SIDD `.npz` blocks (with ground truth, so metrics are shown) and JPG/PNG (converted to a simulated sensor RAW). It shows the RAW, all three pipeline outputs, the adaptive controller's decisions, metrics and per-stage latency, with loading and error states.
 * A batch CLI is also provided (`run_inference.py`).

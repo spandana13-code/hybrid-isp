@@ -1,0 +1,7 @@
+numpy>=1.26
+opencv-python-headless>=4.9
+scikit-image>=0.22
+scipy>=1.11
+onnxruntime>=1.17
+rawpy>=0.19
+psutil>=5.9
