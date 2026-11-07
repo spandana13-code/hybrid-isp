@@ -347,8 +347,7 @@ import base64
 import tempfile
 import uuid
 
-import uvicorn
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -426,7 +425,7 @@ class RunRequest(BaseModel):
     condition: str = "low_light"
 
 
-api = FastAPI(title="Hybrid ISP", docs_url="/api/docs", redoc_url=None)
+api = APIRouter()
 
 
 @api.get("/")
@@ -513,7 +512,18 @@ def run_api(req: RunRequest):
     ))
 
 
-api = gr.mount_gradio_app(api, demo.queue(max_size=16), path="/classic", css=CSS, theme=THEME)
+def serve():
+    """Gradio starts the server (this keeps Hugging Face ZeroGPU, CPU and Docker hosting identical); the custom
+    front-end and its JSON API are then placed in front of Gradio's own routes, so "/" is the new page and the
+    Gradio API stays available under /gradio_api."""
+    demo.queue(max_size=16).launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)),
+                                   css=CSS, theme=THEME, ssr_mode=False, prevent_thread_lock=True)
+    app = demo.app
+    for route in reversed(api.routes):
+        app.router.routes.insert(0, route)
+    print("Custom front-end ready at /", flush=True)
+    demo.block_thread()
+
 
 if __name__ == "__main__":
-    uvicorn.run(api, host="0.0.0.0", port=int(os.environ.get("PORT", 7860)))
+    serve()

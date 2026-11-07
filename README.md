@@ -58,8 +58,8 @@ python run_inference.py --input_dir ./examples/ --output_dir ./results/inference
 The main page is a custom front-end (`web/index.html`, served by FastAPI in `app.py`):
 **Walk the pipeline** steps one image through all eight hybrid stages (sensor mosaic, white balance,
 demosaic, colour matrix, tone curve, noise map, neural correction, output); **Compare results** puts
-a four-way loupe (classical | learned | hybrid | ground truth) under the cursor. The previous Gradio
-interface is still available at `/classic`, and the JSON API at `/api/run` (docs at `/api/docs`).
+a four-way loupe (classical | learned | hybrid | ground truth) under the cursor. Gradio still starts the
+server, so the Gradio API remains available under `/gradio_api`; the page's own JSON API is `/api/run`.
 
 ![app](docs/app_screenshot.png)
 
