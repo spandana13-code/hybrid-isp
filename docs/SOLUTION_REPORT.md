@@ -165,6 +165,22 @@ python evaluate.py --team T42 --usns "1RUA24CSE0510,1RUA24CSE0511,1RUA24CSE0509,
 
 ---
 
+## Appendix: Figures
+
+**Figure 1. System architecture** (classical front-end, adaptive controller, learned stage, post-processing).
+
+![Architecture](architecture.png)
+
+**Figure 2. Official SIDD test blocks.** Columns: ground truth | classical | learned | hybrid. Rows: dark fabric (high noise), flat card, text, and the main failure case (single-colour orange object, white balance).
+
+![Comparison](comparison.jpg)
+
+**Figure 3. Intermediate representations of the hybrid pipeline** (three SIDD test blocks). Columns: visualised RAW | classical front-end output (network input) | measured noise map | learned residual ×4 | hybrid output | ground truth.
+
+![Intermediates](intermediates.jpg)
+
+---
+
 ### Student Submission Checklist
 - [x] Working GitHub repository link included with an updated `README.md`.
 - [x] No raw code pasted into this report.
