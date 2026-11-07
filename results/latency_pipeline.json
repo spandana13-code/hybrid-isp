@@ -1,0 +1,57 @@
+{
+ "Classical ISP": {
+  "total_ms": 535.644299001433,
+  "stages": {
+   "preprocess": 8.4,
+   "analyze": 16.2,
+   "white_balance": 1.0,
+   "demosaic": 5.7,
+   "ccm": 8.0,
+   "gain_tonemap": 13.8,
+   "denoise": 465.1,
+   "sharpen": 13.4
+  }
+ },
+ "Learned ISP (FP32)": {
+  "total_ms": 200.3723589996298,
+  "stages": {
+   "preprocess+analyze": 25.5,
+   "neural_net": 173.4
+  }
+ },
+ "Learned ISP (INT8)": {
+  "total_ms": 179.8528469998928,
+  "stages": {
+   "preprocess+analyze": 25.7,
+   "neural_net": 153.5
+  }
+ },
+ "Hybrid ISP (FP32)": {
+  "total_ms": 346.1436779989526,
+  "stages": {
+   "preprocess": 8.0,
+   "analyze": 12.0,
+   "white_balance": 0.8,
+   "demosaic": 6.1,
+   "ccm": 4.9,
+   "gain_tonemap": 13.8,
+   "noise_map": 28.0,
+   "neural_net": 251.0,
+   "adaptive_sharpen": 21.0
+  }
+ },
+ "Hybrid ISP (INT8)": {
+  "total_ms": 285.0882990014725,
+  "stages": {
+   "preprocess": 7.2,
+   "analyze": 11.9,
+   "white_balance": 0.8,
+   "demosaic": 5.9,
+   "ccm": 4.9,
+   "gain_tonemap": 13.0,
+   "noise_map": 26.4,
+   "neural_net": 195.0,
+   "adaptive_sharpen": 19.6
+  }
+ }
+}

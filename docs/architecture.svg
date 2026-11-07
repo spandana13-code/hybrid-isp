@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 640" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#444"/></marker>
+    <style>
+      .c{fill:#e8f1fb;stroke:#2f6db5;stroke-width:1.4}
+      .n{fill:#fdeee3;stroke:#c8641c;stroke-width:1.4}
+      .x{fill:#eef7ea;stroke:#3d8b37;stroke-width:1.4}
+      .g{fill:#f4f4f4;stroke:#888;stroke-width:1.2}
+      .t{font-weight:bold;font-size:14px}
+      .s{font-size:11px;fill:#444}
+      line,path.l{stroke:#444;stroke-width:1.5;fill:none;marker-end:url(#a)}
+    </style>
+  </defs>
+  <rect width="1180" height="640" fill="#fff"/>
+  <text x="20" y="30" class="t" font-size="18">Hybrid Smartphone ISP — system architecture (matches isp/*.py)</text>
+
+  <!-- input -->
+  <rect x="20" y="60" width="160" height="88" rx="8" class="g"/>
+  <text x="32" y="82" class="t">Input (isp/io.py)</text>
+  <text x="32" y="100" class="s">SIDD phone RAW + meta</text>
+  <text x="32" y="115" class="s">phone DNG (rawpy)</text>
+  <text x="32" y="130" class="s">CFA → RGGB flips</text>
+  <text x="32" y="143" class="s">(sidd.py, io.py)</text>
+
+  <!-- shared front end -->
+  <rect x="210" y="50" width="950" height="150" rx="10" fill="none" stroke="#2f6db5" stroke-dasharray="5 4"/>
+  <text x="222" y="70" class="t" fill="#2f6db5">Classical front-end  (classical.front_end)</text>
+  <rect x="222" y="85" width="120" height="58" rx="6" class="c"/><text x="232" y="106" class="t">Preprocess</text><text x="232" y="122" class="s">black level, norm,</text><text x="232" y="135" class="s">hot-pixel clamp</text>
+  <rect x="362" y="85" width="140" height="100" rx="6" class="x"/><text x="372" y="106" class="t">Adaptive ctrl</text><text x="372" y="122" class="s">noise profile a·x+b</text><text x="372" y="136" class="s">(Gr−Gb, flat areas)</text><text x="372" y="150" class="s">WB: meta / sh.-of-grey</text><text x="372" y="164" class="s">exposure gain</text><text x="372" y="178" class="s">→ denoise h, sharpen</text>
+  <rect x="522" y="85" width="100" height="58" rx="6" class="c"/><text x="532" y="106" class="t">White bal.</text><text x="532" y="122" class="s">per-CFA gains</text>
+  <rect x="642" y="85" width="110" height="58" rx="6" class="c"/><text x="652" y="106" class="t">Demosaic</text><text x="652" y="122" class="s">edge-aware (EA)</text>
+  <rect x="772" y="85" width="100" height="58" rx="6" class="c"/><text x="782" y="106" class="t">CCM</text><text x="782" y="122" class="s">DNG matrix ×</text><text x="782" y="135" class="s">per-phone calib</text>
+  <rect x="892" y="85" width="120" height="58" rx="6" class="c"/><text x="902" y="106" class="t">Gain + tone</text><text x="902" y="122" class="s">camera exposure,</text><text x="902" y="135" class="s">sRGB curve</text>
+  <rect x="1032" y="85" width="118" height="58" rx="6" class="x"/><text x="1042" y="106" class="t">Noise map</text><text x="1042" y="122" class="s">σ(x) propagated</text><text x="1042" y="135" class="s">to output domain</text>
+  <line x1="180" y1="104" x2="220" y2="110"/>
+  <line x1="342" y1="114" x2="360" y2="114"/>
+  <line x1="502" y1="114" x2="520" y2="114"/>
+  <line x1="622" y1="114" x2="640" y2="114"/>
+  <line x1="752" y1="114" x2="770" y2="114"/>
+  <line x1="872" y1="114" x2="890" y2="114"/>
+  <line x1="1012" y1="114" x2="1030" y2="114"/>
+
+  <!-- three branches -->
+  <!-- classical -->
+  <rect x="20" y="240" width="360" height="170" rx="10" fill="none" stroke="#2f6db5"/>
+  <text x="32" y="262" class="t" fill="#2f6db5">A. Classical ISP (baseline)</text>
+  <rect x="40" y="280" width="150" height="62" rx="6" class="c"/><text x="50" y="300" class="t">Denoise</text><text x="50" y="316" class="s">NL-means in CIELab</text><text x="50" y="330" class="s">h from controller</text>
+  <rect x="210" y="280" width="150" height="62" rx="6" class="c"/><text x="220" y="300" class="t">Sharpen</text><text x="220" y="316" class="s">unsharp on Y (YCrCb)</text><text x="220" y="330" class="s">noise-gated amount</text>
+  <line x1="190" y1="311" x2="208" y2="311"/>
+  <text x="40" y="370" class="s">0 learned params · ~150-250 ms / MP (NLM dominates)</text>
+  <path class="l" d="M1000,143 L1000,225 L120,225 L120,238"/>
+
+  <!-- learned -->
+  <rect x="410" y="240" width="350" height="170" rx="10" fill="none" stroke="#c8641c"/>
+  <text x="422" y="262" class="t" fill="#c8641c">B. Learned ISP (end-to-end baseline)</text>
+  <rect x="430" y="280" width="310" height="80" rx="6" class="n"/><text x="440" y="300" class="t">LearnedISP (models.py)</text><text x="440" y="318" class="s">packed RGGB × WB gains + noise map @ H/2</text><text x="440" y="333" class="s">LiteUNet (DS-conv, 3 levels) → PixelShuffle ×2</text><text x="440" y="348" class="s">learns demosaic + WB + CCM + tone + denoise</text>
+  <text x="430" y="385" class="s">uses only scalar WB/noise from controller · 115 k params</text>
+  <path class="l" d="M430,185 L430,225 L585,225 L585,238"/>
+
+  <!-- hybrid -->
+  <rect x="790" y="240" width="370" height="250" rx="10" fill="none" stroke="#3d8b37" stroke-width="2"/>
+  <text x="802" y="262" class="t" fill="#3d8b37">C. Hybrid ISP (proposed)</text>
+  <rect x="810" y="278" width="330" height="128" rx="6" class="n"/>
+  <text x="820" y="298" class="t">HybridNet (models.py) · 187 k params</text>
+  <text x="820" y="316" class="s">in: front-end sRGB + noise map → PixelUnshuffle (H/2)</text>
+  <text x="820" y="331" class="s">LiteUNet → local residual (denoise / demosaic artefacts / detail)</text>
+  <text x="820" y="346" class="s">GlobalHead (64×64 frame thumbnail) → 3×3 matrix + gain</text>
+  <text x="820" y="361" class="s">applied in linear light (fixes AWB / colour errors)</text>
+  <text x="820" y="380" class="s">ONNX Runtime · FP32 / FP16 / INT8 U-Net + FP32 head</text>
+  <text x="820" y="396" class="s">trained L1 + 0.15·(1−SSIM)</text>
+  <rect x="810" y="420" width="330" height="52" rx="6" class="c"/><text x="820" y="440" class="t">Adaptive post-sharpen</text><text x="820" y="458" class="s">luma unsharp, ½ of controller amount</text>
+  <line x1="975" y1="406" x2="975" y2="418"/>
+  <path class="l" d="M1090,143 L1090,276"/>
+  <path class="l" d="M1000,225 L1000,276"/>
+
+  <!-- outputs/eval -->
+  <rect x="20" y="520" width="1140" height="100" rx="10" class="g"/>
+  <text x="32" y="545" class="t">Outputs &amp; evaluation</text>
+  <text x="32" y="566" class="s">app.py (Gradio): side-by-side Classical / Learned / Hybrid, controller read-out, per-stage latency, metrics vs reference.</text>
+  <text x="32" y="584" class="s">evaluate.py: official SIDD benchmark (928 real RAW blocks, 5 phones) — PSNR, SSIM, ΔE2000, LPIPS by noise / brightness / phone, ablations, failure cases → eval_P2_&lt;team&gt;.md</text>
+  <text x="32" y="602" class="s">optimize.py: ONNX export, FP16, INT8 PTQ, params / size / latency / peak memory.   train.py: SIDD patch bank, 101 train / 14 val capture instances; sidd.py: per-phone colour calibration.</text>
+  <line x1="200" y1="410" x2="200" y2="518"/>
+  <line x1="585" y1="410" x2="585" y2="518"/>
+  <line x1="975" y1="490" x2="975" y2="518"/>
+</svg>

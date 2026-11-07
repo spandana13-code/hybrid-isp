@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+checkpoints/bank_*/
+.venv/
+.env
+*.data
+sym_shape_infer_temp.onnx
+models/*_pre.onnx

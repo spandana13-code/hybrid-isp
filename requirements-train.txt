@@ -1,0 +1,8 @@
+-r requirements.txt
+# training, export, quantisation, LPIPS
+torch>=2.2
+torchvision>=0.17
+onnx>=1.15
+onnxscript
+onnxconverter-common>=1.14
+lpips>=0.1.4

@@ -1,0 +1,10 @@
+hybrid: 187,294 params
+/home/claude/hybrid-isp/train.py:123: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  log.append(dict(iter=it, loss=float(loss), val_psnr=vp, sec=time.time() - t0))
+[hybrid] it 250 loss 0.0503 val_psnr 29.09 (70s)
+[hybrid] it 500 loss 0.0539 val_psnr 31.32 (141s)
+[hybrid] it 750 loss 0.0363 val_psnr 32.36 (210s)
+[hybrid] it 1000 loss 0.0448 val_psnr 32.09 (278s)
+[hybrid] it 1250 loss 0.0233 val_psnr 32.42 (347s)
+[hybrid] it 1500 loss 0.0283 val_psnr 33.57 (418s)
